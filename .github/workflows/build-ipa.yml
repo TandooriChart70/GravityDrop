@@ -1,0 +1,48 @@
+
+name: Build SideStore IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project
+        run: unzip -q GravityDrop-iPhone.zip -d source
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build iPhone app
+        run: |
+          cd source
+          xcodegen generate
+          xcodebuild \
+            -project GravityDrop.xcodeproj \
+            -scheme GravityDrop \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
+
+      - name: Package IPA
+        run: |
+          mkdir -p output/Payload
+          cp -R source/build/Build/Products/Release-iphoneos/GravityDrop.app output/Payload/
+          cd output
+          zip -qr GravityDrop.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: GravityDrop-IPA
+          path: output/GravityDrop.ipa
